@@ -45,7 +45,7 @@ class Interpreter extends AbstractInterpreter
                     $this->stackLen--;
                     return array_pop($this->stack);
                 } else {
-                    throw new Exception("Stack is empty", 55);
+                    exit_with_error(55);
                 }
             }
 
@@ -65,13 +65,13 @@ class Interpreter extends AbstractInterpreter
 
         class Instruction
         {
-            public $inst_opcode;
+            public $opcode;
             public $order;
             public $args;
 
-            public function __construct($inst_opcode, $order)
+            public function __construct($opcode, $order)
             {
-                $this->inst_opcode = $inst_opcode;
+                $this->opcode = $opcode;
                 $this->order = $order;
                 $this->args = array();
             }
@@ -159,8 +159,16 @@ class Interpreter extends AbstractInterpreter
             private $local_frame = new Stack();
             private $call_stack = new Stack();
             private $data_stack = false;
+            private $input;
+            private $input_file_is_opened;
 
+            private $source;
 
+            public function __construct($input, $source)
+            {
+                $this->input = $input;
+                $this->source = $source;
+            }
             public static function check_int_in_str($string)
             {
                 if ($string[0] === '-' || $string[0] === '+') {
@@ -279,7 +287,7 @@ class Interpreter extends AbstractInterpreter
             {
                 $instNum = 0;
                 foreach ($this->instructions as $inst) {
-                    if ($inst->inst_opcode == 'LABEL') {
+                    if ($inst->opcode == 'LABEL') {
                         $label = $inst->args[0]; // Assuming $inst->args is an array of objects
                         if (array_key_exists($label->value, $this->labels)) {
                             exit_with_error(52);
@@ -335,7 +343,7 @@ class Interpreter extends AbstractInterpreter
                         break;
                     }
                     $inst = $this->instructions[$inst_num];
-                    $opcode = $inst->inst_opcode;
+                    $opcode = $inst->opcode;
                     if ($opcode == 'LABEL') {
                         $inst_num++;
                         continue;
@@ -795,29 +803,8 @@ class Interpreter extends AbstractInterpreter
                 }
             }
             public function get_input_line() {
-                if ($this->input_is_file) {
-                    if (!$this->input_file_is_opened) {
-                        $handle = fopen($this->input_file, "r");
-                        if ($handle) {
-                            while (($line = fgets($handle)) !== false) {
-                                $this->input_file_content[] = trim($line);
-                            }
-                            fclose($handle);
-                            $this->input_file_is_opened = true;
-                        } else {
-                            // Handle error opening the file
-                            echo "Error opening the input file.\n";
-                            return null;
-                        }
-                    }
-        
-                    if ($this->input_file_line_counter < count($this->input_file_content)) {
-                        $line = $this->input_file_content[$this->input_file_line_counter];
-                        $this->input_file_line_counter++;
-                        return $line;
-                    } else {
-                        return null;
-                    }
+                if ($this->input) {
+                    return $this->input->readString();
                 } else {
                     return trim(fgets(STDIN));
                 }
@@ -828,11 +815,11 @@ class Interpreter extends AbstractInterpreter
         // Check \IPP\Core\AbstractInterpreter for predefined I/O objects:
         $dom = $this->source->getDOMDocument();
         $xml_root = $dom->documentElement;
-
         if ($xml_root->nodeName !== 'program') {
+            // also check name for ippcode 24
             exit_with_error(32);
         }
-        $interpeter = new XmlInterpret();
+        $interpeter = new XmlInterpret($this->input,$this->source);
         $interpeter->parse_instructions($xml_root);
         $interpeter->sortInstructions();
         $interpeter->findLabels();
