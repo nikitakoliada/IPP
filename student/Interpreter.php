@@ -2,6 +2,8 @@
 
 namespace IPP\Student;
 
+
+use IPP\Student\ErrorExit;
 use IPP\Core\AbstractInterpreter;
 use IPP\Core\Exception\NotImplementedException;
 use IPP\Student\XmlInterpret;
@@ -16,12 +18,12 @@ class Interpreter extends AbstractInterpreter
         $xml_root = $dom->documentElement;
         if ($xml_root->nodeName !== 'program') {
             // also check name for ippcode 24
-            exit_with_error(32);
+            ErrorExit::exit_with_error(32);
         }
         $interpeter = new XmlInterpret($this->input,$this->source,$this->stdout,$this->stderr);
-        $interpeter->parse_instructions($xml_root);
+        $interpeter->getInstructions($xml_root);
         $interpeter->sortInstructions();
-        $interpeter->findLabels();
+        $interpeter->checkForLabels();
         $interpeter->generate();
 
         // $val = $this->input->readString()    ;

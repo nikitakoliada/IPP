@@ -39,27 +39,28 @@ class XmlInterpret
         $this->local_frame = new Stack();
         $this->data_stack = new Stack();
     }
-    public static function check_int_in_str($string)
-    {
-        if ($string[0] === '-' || $string[0] === '+') {
-            return ctype_digit(substr($string, 1));
-        }
-        return ctype_digit($string);
-    }
+    //TODO rewrite
+    // public static function check_int_in_str($string)
+    // {
+    //     if ($string[0] === '-' || $string[0] === '+') {
+    //         return ctype_digit(substr($string, 1));
+    //     }
+    //     return ctype_digit($string);
+    // }
     public function sortInstructions()
     {
         usort($this->instructions, function ($a, $b) {
             return $a->order <=> $b->order;
         });
     }
-    public function parse_instructions($node)
+    public function getInstructions($node)
     {
         foreach ($node->childNodes as $child) {
             if ($child->nodeType === XML_ELEMENT_NODE && $child->nodeName === 'instruction') {
                 $order = $child->getAttribute('order');
                 $opcode = $child->getAttribute('opcode');
 
-                if (!$order || !$opcode || !ctype_digit($order) || !$this->check_int_in_str($order) || in_array((int) $order, $this->order_numbers) || (int) $order < 1) {
+                if (!$order || !$opcode || !ctype_digit($order) || !filter_var($order, FILTER_VALIDATE_INT) || in_array((int) $order, $this->order_numbers) || (int) $order < 1) {
                     echo "line 55\n";
                     ErrorExit::exit_with_error(32);
                 }
@@ -69,7 +70,7 @@ class XmlInterpret
 
                 foreach ($child->childNodes as $argNode) {
                     if ($argNode->nodeType === XML_ELEMENT_NODE) {
-                        $this->parse_argument($instruction, $argNode);
+                        $this->getArgument($instruction, $argNode);
                         
                     }
                 }
@@ -96,7 +97,7 @@ class XmlInterpret
             }
         }
     }
-    public function parse_argument($inst, $arg)
+    public function getArgument($inst, $arg)
     {
         $allowedTags = ['arg1', 'arg2', 'arg3'];
         if (!in_array($arg->tagName, $allowedTags)) {
@@ -123,7 +124,7 @@ class XmlInterpret
                 break;
 
             case 'int':
-                if (!$text || !$this->check_int_in_str($text)) {
+                if (!$text || filter_var($text, FILTER_VALIDATE_INT)) {
                     echo "line 116\n";
 
                     ErrorExit::exit_with_error(32);
@@ -165,7 +166,7 @@ class XmlInterpret
                 ErrorExit::exit_with_error(32);
         }
     }
-    public function findLabels()
+    public function checkForLabels()
     {
         $instNum = 0;
         foreach ($this->instructions as $inst) {
@@ -179,7 +180,7 @@ class XmlInterpret
             $instNum++;
         }
     }
-    private function &getFrame($arg)
+    private function &checkForFrame($arg)
     {
         switch ($arg->frame) {
             case 'GF':
@@ -197,6 +198,8 @@ class XmlInterpret
                 return $this->local_frame->top()[1];
         }
     }
+
+    // rewrite to separate functions inside argument class
     private function getValueAndTypeAndInitOfSymbol($arg)
     {
         if ($arg->kind === 'var') {
@@ -208,7 +211,7 @@ class XmlInterpret
     }
     private function &getVar($arg)
     {
-        $frame = &$this->getFrame($arg);
+        $frame = &$this->checkForFrame($arg);
         foreach ($frame as $var) {
             // Assuming $var->pure_name and a method $arg->getPureName() exist
             if ($var->pure_name === $arg->getPureName()) {
@@ -239,7 +242,7 @@ class XmlInterpret
                 continue;
             } else if ($opcode == 'DEFVAR') {
                 $arg = $inst->args[0];
-                $frame = &$this->getFrame($arg);
+                $frame = &$this->checkForFrame($arg);
                 $frame[] = new Variable($arg->name, null, false, null);
                 @$inst_num++;
             } else if ($opcode == "MOVE") {
@@ -437,7 +440,7 @@ class XmlInterpret
                 list($value1, $type_v1, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 // Assuming get_input_line() is implemented to fetch input appropriately
-                $line = $this->get_input_line();
+                $line = $this->getInput();
                 if ($line === null) {
                     $var->type_v = 'nil';
                     $var->value = 'nil';
@@ -479,6 +482,7 @@ class XmlInterpret
                 else if ($type_v === 'int') {
                     $this->stdout->writeInt($value);
                 } else if ($type_v === 'string') {
+                    
                     $this->stdout->writeString(stripcslashes($value));
                 }
                 $inst_num++;
@@ -684,9 +688,10 @@ class XmlInterpret
 
         }
     }
-    public function get_input_line()
+    public function getInput()
     {
         if ($this->input) {
+            //check for int bool
             return $this->input->readString();
         } else {
             return trim(fgets(STDIN));
