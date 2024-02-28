@@ -23,8 +23,7 @@ class OperandTypes(Enum):
     LABEL = "label"
 
 
-# redo idk
-class SetError:
+class ErrorExit:
     @staticmethod
     def error_exit(err_code, message):
         sys.stderr.write(f"Error: {message} ({err_code.value}) \n")
@@ -221,22 +220,22 @@ class Instruction:
         self.operands = []
 
         if self.name not in INSTRUCTION_WORDS:
-            SetError.error_exit(ErrorCodes.ERR_SRC, "no such instruction exist")
+            ErrorExit.error_exit(ErrorCodes.ERR_SRC, "no such instruction exist")
 
         instruction_rule = INSTRUCTION_WORDS[self.name]
 
         if len(destructured_line) != len(instruction_rule.get_operands()):
-            SetError.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid number of operands")
+            ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid number of operands")
 
         for key, operand in enumerate(instruction_rule.get_operands()):
             if operand == OperandTypes.VAR and not Validators.is_var(destructured_line[key]):
-                SetError.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid variable")
+                ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid variable")
             elif operand == OperandTypes.SYMB and not Validators.is_symb(destructured_line[key]):
-                SetError.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid constant")
+                ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid constant")
             elif operand == OperandTypes.TYPE and not Validators.is_type(destructured_line[key]):
-                SetError.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid type")
+                ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid type")
             elif operand == OperandTypes.LABEL and not Validators.is_label(destructured_line[key]):
-                SetError.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid label")
+                ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "Invalid label")
 
             self.operands.append(Operand(destructured_line[key], operand))
 
@@ -257,16 +256,16 @@ class Analyser:
 
     def get_instructions(self):
         if len(self.input) == 0:
-            SetError.error_exit(ErrorCodes.ERR_HEADER, "invalid header")
+            ErrorExit.error_exit(ErrorCodes.ERR_HEADER, "invalid header")
         if not Validators.is_header(self.input[0]):
-            SetError.error_exit(ErrorCodes.ERR_HEADER, "invalid header")
+            ErrorExit.error_exit(ErrorCodes.ERR_HEADER, "invalid header")
 
         # Remove the header line
         self.input.pop(0)  
         #check if only one header
         if self.input:
             if Validators.is_header(self.input[0]):
-                SetError.error_exit(ErrorCodes.ERR_SYNTAX, "too many headers")
+                ErrorExit.error_exit(ErrorCodes.ERR_SYNTAX, "too many headers")
 
         for line in self.input:
             self.instructions.append(Instruction(line.split()))
@@ -312,20 +311,16 @@ def main():
     try:
         options, _ = getopt.getopt(sys.argv[1:], shortopts, longopts)
     except getopt.GetoptError as err:
-        SetError.error_exit(ErrorCodes.ERR_PARAM, str(err))
+        ErrorExit.error_exit(ErrorCodes.ERR_PARAM, str(err))
     for o, a in options:
         if o in ("-h", "--help"):
             if len(options) != 1:
-                SetError.error_exit(ErrorCodes.ERR_PARAM, "'--help' doesn't have any other arguments or flags")
+                ErrorExit.error_exit(ErrorCodes.ERR_PARAM, "'--help' doesn't have any other arguments or flags")
 
             print("""
-            Welcome to IPPCode24 parser!
-            Script takes IPPCode24 as input, creates XML representation (encoding UTF-8)
-            and sends it to doc.
-
             Usage: python parser.py [options] < [file]
 
-            Default options:
+            Otions:
             --help or -h\tprints help info
             """)
             exit(0)

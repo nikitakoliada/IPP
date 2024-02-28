@@ -71,7 +71,7 @@ class XmlInterpret
                 foreach ($child->childNodes as $argNode) {
                     if ($argNode->nodeType === XML_ELEMENT_NODE) {
                         $this->getArgument($instruction, $argNode);
-                        
+
                     }
                 }
                 // if (count($instruction->args) - 1 > 1) {
@@ -114,11 +114,10 @@ class XmlInterpret
                 if (strlen($text) < 3 || !in_array(substr($text, 0, 3), ['GF@', 'LF@', 'TF@'])) {
                     ErrorExit::exit_with_error(31);
                 }
-                $inst->addArgument(new Argument('var', null ,$text, $arg_order));
+                $inst->addArgument(new Argument('var', null, $text, $arg_order));
                 break;
 
             case 'string':
-                // Simplifying here; you may need to adjust based on specific needs
                 $value = $text ?: '';
                 $inst->addArgument(new Argument('string', $value, null, $arg_order));
                 break;
@@ -150,7 +149,7 @@ class XmlInterpret
                 if (!$text) {
                     ErrorExit::exit_with_error(31);
                 }
-                $inst->addArgument(new Argument('label', $text, null,  $arg_order));
+                $inst->addArgument(new Argument('label', $text, null, $arg_order));
                 break;
 
             case 'type':
@@ -171,7 +170,7 @@ class XmlInterpret
         $instNum = 0;
         foreach ($this->instructions as $inst) {
             if ($inst->opcode == 'LABEL') {
-                $label = $inst->args[0]; // Assuming $inst->args is an array of objects
+                $label = $inst->args[0];
                 if (array_key_exists($label->value, $this->labels)) {
                     ErrorExit::exit_with_error(52);
                 }
@@ -204,7 +203,7 @@ class XmlInterpret
     {
         if ($arg->kind === 'var') {
             $var = $this->getVar($arg);
-            return [$var->value, $var->type_v, $var->initialized];
+            return [$var->value, $var->type_of_variable, $var->initialized];
         } elseif (in_array($arg->kind, ['string', 'int', 'bool', 'nil'])) {
             return [$arg->value, $arg->kind, true];
         }
@@ -219,7 +218,7 @@ class XmlInterpret
             }
         }
         echo "" . $arg->name . "line 206\n";
-        ErrorExit::exit_with_error(54); 
+        ErrorExit::exit_with_error(54);
     }
     public function generate()
     {
@@ -254,12 +253,12 @@ class XmlInterpret
                     ErrorExit::exit_with_error(56);
                 }
                 $var->value = $value[0];
-                $var->type_v = $value[1];
+                $var->type_of_variable = $value[1];
                 $var->initialized = true;
                 $inst_num++;
             } else if ($opcode == "CALL") {
                 $label = $inst->args[0];
-                $this->call_stack->pushValue('int', $inst_num);
+                $this->call_stack->push('int', $inst_num);
                 if (!array_key_exists($label->value, $this->labels)) {
                     ErrorExit::exit_with_error(52);
                 }
@@ -268,7 +267,7 @@ class XmlInterpret
                 if ($this->call_stack->isEmpty()) {
                     ErrorExit::exit_with_error(56);
                 }
-                $inst_num = $this->call_stack->popValue()[1];
+                $inst_num = $this->call_stack->pop()[1];
             } else if ($opcode == 'CREATEFRAME') {
                 $this->temp_frame = [];
                 $this->temp_frame_valid = true;
@@ -277,7 +276,7 @@ class XmlInterpret
                 if (!$this->temp_frame_valid) {
                     ErrorExit::exit_with_error(55);
                 }
-                $this->local_frame->pushValue('frame', $this->temp_frame);
+                $this->local_frame->push('frame', $this->temp_frame);
                 $this->temp_frame_valid = false;
                 $inst_num++;
             } elseif ($opcode == 'POPFRAME') {
@@ -285,41 +284,41 @@ class XmlInterpret
                     ErrorExit::exit_with_error(55);
                     return;
                 }
-                $this->temp_frame = $this->local_frame->popValue()[1];
+                $this->temp_frame = $this->local_frame->pop()[1];
                 $this->temp_frame_valid = true;
                 $inst_num++;
             } elseif ($opcode == 'PUSHS') {
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
-                $this->data_stack->pushValue($type_v, $value);
+                $this->data_stack->push($type_of_variable, $value);
                 $inst_num++;
             } elseif ($opcode == 'POPS') {
                 if ($this->data_stack->isEmpty()) {
                     ErrorExit::exit_with_error(56);
                 }
-                list($type_v, $value) = $this->data_stack->popValue();
+                list($type_of_variable, $value) = $this->data_stack->pop();
                 $var = &$this->getVar($inst->args[0]);
-                $var->type_v = $type_v;
+                $var->type_of_variable = $type_of_variable;
                 $var->value = $value;
                 $var->initialized = true;
                 $inst_num++;
             } else if (in_array($opcode, ['ADD', 'SUB', 'MUL', 'IDIV', 'DIV'])) {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'int' || $type_v2 !== 'int') {
+                if ($type_of_variable1 !== 'int' || $type_of_variable2 !== 'int') {
                     ErrorExit::exit_with_error(53);
                     return;
                 }
 
-                $var->type_v = 'int';
+                $var->type_of_variable = 'int';
                 $var->initialized = true;
 
                 switch ($opcode) {
@@ -344,85 +343,84 @@ class XmlInterpret
                 $inst_num++;
             } else if ($opcode === 'AND') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'bool' || $type_v2 !== 'bool') {
+                if ($type_of_variable1 !== 'bool' || $type_of_variable2 !== 'bool') {
                     ErrorExit::exit_with_error(53);
                 }
 
-                $var->type_v = 'bool';
+                $var->type_of_variable = 'bool';
                 $var->initialized = true;
                 $var->value = ($value1 === 'true' && $value2 === 'true') ? 'true' : 'false';
                 $inst_num++;
             } elseif ($opcode === 'OR') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'bool' || $type_v2 !== 'bool') {
+                if ($type_of_variable1 !== 'bool' || $type_of_variable2 !== 'bool') {
                     ErrorExit::exit_with_error(53);
                 }
 
-                $var->type_v = 'bool';
+                $var->type_of_variable = 'bool';
                 $var->initialized = true;
                 $var->value = ($value1 === 'true' || $value2 === 'true') ? 'true' : 'false';
                 $inst_num++;
             } elseif ($opcode === 'NOT') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v !== 'bool') {
+                if ($type_of_variable !== 'bool') {
                     ErrorExit::exit_with_error(53);
                 }
 
-                $var->type_v = 'bool';
+                $var->type_of_variable = 'bool';
                 $var->initialized = true;
                 $var->value = ($value === 'false') ? 'true' : 'false';
                 $inst_num++;
-            }
-            else if (in_array($opcode, ['LT', 'GT', 'EQ'])) {
+            } else if (in_array($opcode, ['LT', 'GT', 'EQ'])) {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if (!in_array($type_v1, ['int', 'string', 'bool', 'nil']) || !in_array($type_v2, ['int', 'string', 'bool', 'nil'])) {
+                if (!in_array($type_of_variable1, ['int', 'string', 'bool', 'nil']) || !in_array($type_of_variable2, ['int', 'string', 'bool', 'nil'])) {
                     ErrorExit::exit_with_error(53);
                     return;
                 }
 
-                $var->type_v = 'bool';
+                $var->type_of_variable = 'bool';
                 $var->initialized = true;
 
-                if (($type_v1 === 'nil' || $type_v2 === 'nil') && $opcode !== 'EQ') {
+                if (($type_of_variable1 === 'nil' || $type_of_variable2 === 'nil') && $opcode !== 'EQ') {
                     ErrorExit::exit_with_error(53);
                 } else {
                     switch ($opcode) {
                         case 'LT':
-                            if ($type_v1 !== $type_v2) {
+                            if ($type_of_variable1 !== $type_of_variable2) {
                                 ErrorExit::exit_with_error(53);
                             } else {
                                 $var->value = ($value1 < $value2) ? 'true' : 'false';
                             }
                             break;
                         case 'GT':
-                            if ($type_v1 !== $type_v2) {
+                            if ($type_of_variable1 !== $type_of_variable2) {
                                 ErrorExit::exit_with_error(53);
                             } else {
                                 $var->value = ($value1 > $value2) ? 'true' : 'false';
@@ -437,31 +435,31 @@ class XmlInterpret
                 $inst_num++;
             } else if ($opcode === 'READ') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value1, $type_of_variable1, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 // Assuming get_input_line() is implemented to fetch input appropriately
                 $line = $this->getInput();
                 if ($line === null) {
-                    $var->type_v = 'nil';
+                    $var->type_of_variable = 'nil';
                     $var->value = 'nil';
                     $var->initialized = true;
                 } else {
-                    switch ($type_v1) {
+                    switch ($type_of_variable1) {
                         case 'int':
                             if (filter_var($line, FILTER_VALIDATE_INT) !== false) {
-                                $var->type_v = 'int';
+                                $var->type_of_variable = 'int';
                                 $var->value = (int) $line;
                             } else {
-                                $var->type_v = 'nil';
+                                $var->type_of_variable = 'nil';
                                 $var->value = 'nil';
                             }
                             break;
                         case 'bool':
-                            $var->type_v = 'bool';
+                            $var->type_of_variable = 'bool';
                             $var->value = (strtolower($line) === 'true') ? 'true' : 'false';
                             break;
                         case 'string':
-                            $var->type_v = 'string';
+                            $var->type_of_variable = 'string';
                             $var->value = $line;
                             break;
                     }
@@ -469,91 +467,90 @@ class XmlInterpret
                 }
                 $inst_num++;
             } else if ($opcode === 'WRITE') {
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
-                if ($type_v === 'nil') {
+                if ($type_of_variable === 'nil') {
                     echo ''; // Printing nothing for 'nil'
-                } else if ($type_v === 'bool') {
+                } else if ($type_of_variable === 'bool') {
 
                     $this->stdout->writeBool($value);
-                }
-                else if ($type_v === 'int') {
+                } else if ($type_of_variable === 'int') {
                     $this->stdout->writeInt($value);
-                } else if ($type_v === 'string') {
-                    
+                } else if ($type_of_variable === 'string') {
+
                     $this->stdout->writeString(stripcslashes($value));
                 }
                 $inst_num++;
             } else if ($opcode === 'INT2CHAR') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v !== 'int') {
+                if ($type_of_variable !== 'int') {
                     ErrorExit::exit_with_error(53);
                 }
 
                 if ($value < 0 || $value > 255) {
                     ErrorExit::exit_with_error(58);
                 } else {
-                    $var->type_v = 'string';
+                    $var->type_of_variable = 'string';
                     $var->value = chr($value);
                     $var->initialized = true;
                 }
                 $inst_num++;
             } elseif ($opcode === 'STRI2INT') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'string' || $type_v2 !== 'int') {
+                if ($type_of_variable1 !== 'string' || $type_of_variable2 !== 'int') {
                     ErrorExit::exit_with_error(53);
                 } elseif ($value2 < 0 || $value2 >= strlen($value1)) {
                     ErrorExit::exit_with_error(58);
                 } else {
-                    $var->type_v = 'int';
+                    $var->type_of_variable = 'int';
                     $var->value = ord($value1[$value2]);
                     $var->initialized = true;
                 }
                 $inst_num++;
             } elseif ($opcode === 'CONCAT') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'string' || $type_v2 !== 'string') {
+                if ($type_of_variable1 !== 'string' || $type_of_variable2 !== 'string') {
                     ErrorExit::exit_with_error(53);
                 } else {
-                    $var->type_v = 'string';
+                    $var->type_of_variable = 'string';
                     $var->value = $value1 . $value2;
                     $var->initialized = true;
                 }
                 $inst_num++;
             } elseif ($opcode === 'STRLEN') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v !== 'string') {
+                if ($type_of_variable !== 'string') {
                     ErrorExit::exit_with_error(53);
                 } else {
-                    $var->type_v = 'int';
+                    $var->type_of_variable = 'int';
                     $var->value = strlen($value);
                     $var->initialized = true;
                 }
@@ -563,14 +560,14 @@ class XmlInterpret
                 $inst_num++;
             } else if ($opcode === 'SETCHAR') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2 || !$var->initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($var->type_v !== 'string' || $type_v1 !== 'int' || $type_v2 !== 'string') {
+                if ($var->type_of_variable !== 'string' || $type_of_variable1 !== 'int' || $type_of_variable2 !== 'string') {
                     ErrorExit::exit_with_error(53);
                     return;
                 }
@@ -580,17 +577,17 @@ class XmlInterpret
                 }
 
                 $var->value[$value1] = $value2[0];
-                $var->type_v = 'string';
+                $var->type_of_variable = 'string';
                 $var->initialized = true;
                 $inst_num++;
             } else if ($opcode === 'DPRINT') {
-                list($value1, $type_v1, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
+                list($value1, $type_of_variable1, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
 
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 === 'nil') {
+                if ($type_of_variable1 === 'nil') {
                     fwrite(STDERR, '');
                 } else {
                     fwrite(STDERR, $value1);
@@ -598,14 +595,14 @@ class XmlInterpret
                 $inst_num++;
             } else if ($opcode === 'GETCHAR') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v1 !== 'string' || $type_v2 !== 'int') {
+                if ($type_of_variable1 !== 'string' || $type_of_variable2 !== 'int') {
                     ErrorExit::exit_with_error(53);
                     return;
                 }
@@ -614,7 +611,7 @@ class XmlInterpret
                     ErrorExit::exit_with_error(58);
                 }
 
-                $var->type_v = 'string';
+                $var->type_of_variable = 'string';
                 $var->value = $value1[$value2];
                 $var->initialized = true;
                 $inst_num++;
@@ -629,25 +626,25 @@ class XmlInterpret
                 $inst_num = $this->labels[$label->value];
             } elseif ($opcode === 'TYPE') {
                 $var = &$this->getVar($inst->args[0]);
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
 
                 if (!$initialized) {
-                    $var->type_v = 'string';
+                    $var->type_of_variable = 'string';
                     $var->value = '';
                 } else {
-                    $var->type_v = 'string';
-                    $var->value = $type_v;
+                    $var->type_of_variable = 'string';
+                    $var->value = $type_of_variable;
                 }
                 $var->initialized = true;
                 $inst_num++;
             } elseif ($opcode === 'EXIT') {
-                list($value, $type_v, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
+                list($value, $type_of_variable, $initialized) = $this->getValueAndTypeAndInitOfSymbol($inst->args[0]);
 
                 if (!$initialized) {
                     ErrorExit::exit_with_error(56);
                 }
 
-                if ($type_v !== 'int') {
+                if ($type_of_variable !== 'int') {
                     ErrorExit::exit_with_error(53);
                 } elseif ($value < 0 || $value > 49) {
                     ErrorExit::exit_with_error(57);
@@ -656,8 +653,8 @@ class XmlInterpret
                 }
             } else if (in_array($opcode, ['JUMPIFEQ', 'JUMPIFNEQ'])) {
                 $label = $inst->args[0];
-                list($value1, $type_v1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
-                list($value2, $type_v2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
+                list($value1, $type_of_variable1, $initialized1) = $this->getValueAndTypeAndInitOfSymbol($inst->args[1]);
+                list($value2, $type_of_variable2, $initialized2) = $this->getValueAndTypeAndInitOfSymbol($inst->args[2]);
 
                 if (!$initialized1 || !$initialized2) {
                     ErrorExit::exit_with_error(56);
@@ -668,7 +665,7 @@ class XmlInterpret
                     return;
                 }
 
-                if ($type_v1 !== $type_v2 && $type_v1 !== 'nil' && $type_v2 !== 'nil') {
+                if ($type_of_variable1 !== $type_of_variable2 && $type_of_variable1 !== 'nil' && $type_of_variable2 !== 'nil') {
                     ErrorExit::exit_with_error(53);
                 } else {
                     if ($opcode === 'JUMPIFEQ' && $value1 === $value2) {
@@ -681,7 +678,7 @@ class XmlInterpret
                 }
             } else {
                 // unknown instruction
-                echo "" .$opcode . "line 662\n";
+                echo "" . $opcode . "line 662\n";
 
                 ErrorExit::exit_with_error(32);
             }

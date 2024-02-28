@@ -15,13 +15,13 @@ class Stack
         $this->stackLen = 0;
     }
 
-    public function pushValue($valueType, $value)
+    public function push($valueType, $value)
     {
         array_push($this->stack, array($valueType, $value));
         $this->stackLen++;
     }
 
-    public function popValue()
+    public function pop()
     {
         if ($this->stackLen != 0) {
             $this->stackLen--;
