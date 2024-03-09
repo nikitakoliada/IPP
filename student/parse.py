@@ -318,7 +318,7 @@ def main():
                 ErrorExit.error_exit(ErrorCodes.ERR_PARAM, "'--help' doesn't have any other arguments or flags")
 
             print("""
-            Usage: python parser.py [options] < [file]
+            Usage: python parse.py [options] <[file]
 
             Otions:
             --help or -h\tprints help info

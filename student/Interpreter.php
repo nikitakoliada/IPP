@@ -17,16 +17,16 @@ class Interpreter extends AbstractInterpreter
         $dom = $this->source->getDOMDocument();
         $xml_root = $dom->documentElement;
         if ($xml_root->nodeName !== 'program') {
-            ErrorExit::exit_with_error(32);
+            ErrorExit::exit_with_error(32, $this->stderr);
 
         }
         $language = $xml_root->getAttribute('language');
         if (strtolower($language) !== 'ippcode24') {
-            ErrorExit::exit_with_error(32);
+            ErrorExit::exit_with_error(32, $this->stderr);
         }
         $interpeter = new XmlInterpret($this->input, $this->source, $this->stdout, $this->stderr);
         $interpeter->getInstructions($xml_root);
-        $interpeter->sortInstructions();
+        // $interpeter->sortInstructions();
         $interpeter->checkForLabels();
         $interpeter->generate();
 

@@ -27,7 +27,7 @@ class Stack
             $this->stackLen--;
             return array_pop($this->stack);
         } else {
-            ErrorExit::exit_with_error(55);
+            ErrorExit::exit_with_error(55, $this->stderr);
         }
     }
 

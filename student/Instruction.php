@@ -8,6 +8,7 @@ class Instruction
     public $opcode;
     public $order;
     public $args;
+    public $args_count;
 
     public function __construct($opcode, $order)
     {
@@ -26,5 +27,6 @@ class Instruction
     public function addArgument($arg)
     {
         $this->args[] = $arg;
+        $this->args_count++;
     }
 }

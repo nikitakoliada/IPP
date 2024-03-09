@@ -22,7 +22,7 @@ class Argument
         if ($this->name !== null && $this->kind === 'var') {
             $this->frame = substr($this->name, 0, 2);
         }
-        echo "Argument created: " . $this->kind . " " . $this->value . " " . $this->name . " " . $this->frame . " " . $this->arg_order . PHP_EOL;
+        //echo "Argument created: " . $this->kind . " " . $this->value . " " . $this->name . " " . $this->frame . " " . $this->arg_order . PHP_EOL;
     }
 
     public function getPureName()
